@@ -223,9 +223,8 @@ stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen, bool &b
 	return c;
 }
 
-stock Address Econ_GetItem(int weapon) {
-	int idx = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-	Address pItem = SDKCall(GetItemDefinition, GEconItemSchema, idx);
+stock Address Econ_GetItem(int index) {
+	Address pItem = SDKCall(GetItemDefinition, GEconItemSchema, index);
 	return pItem;
 }
 
