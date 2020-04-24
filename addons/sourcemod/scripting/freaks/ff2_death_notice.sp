@@ -155,7 +155,7 @@ public void Post_PlayerHurt(Event hEvent, const char[] sName, bool broadcast)
 		if(StrContains(Allow, weapons) == -1)
 			return;
 		
-		if(!GetWeaponIconName(wep, weapons, sizeof(weapons)))
+		if(!GetWeaponIconName(min, weapons, sizeof(weapons)))
 			return;
 		
 		FireFakeDeathEvent(ui_victim, ui_attacker, weaponid, weapons, DMG_CRIT | DMG_PREVENT_PHYSICS_FORCE);
@@ -204,8 +204,7 @@ bool GetWeaponIconName(int index, char[] name, int size)
 	if(pData==Address_Null)
 		return false;
 	
-	LoadStringFromAddress(pData, name, size);
-	return true;
+	return !!LoadStringFromAddress(pData, name, size);
 }
 
 //By nosoop
