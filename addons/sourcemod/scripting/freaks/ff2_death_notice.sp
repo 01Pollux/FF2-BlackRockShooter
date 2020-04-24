@@ -9,9 +9,15 @@ bool CanFireFakeDeath[MAXCLIENTS];
 bool IsActive;
 bool isFakeEvent;
 
-//The only way to do it without SourceScramble::MemoryBlock(). i tried to find find an offset that can let me peek at "weapon" string, but then i gave up
+Handle GetItemDefinition;
+
+Address GEconItemSchema;
+Address m_pszItemIconClassname;
+
 public void OnPluginStart2()
 {
+	Prep_GameData();
+	
 	#if defined _FFBAT_included
 	int Ver[3];
 	FF2_GetForkVersion(Ver);
@@ -25,6 +31,27 @@ public void OnPluginStart2()
 	HookEvent("arena_win_panel", Post_RoundEnd, EventHookMode_PostNoCopy);
 	if(IsRoundActive())
 		Post_RoundStart(null, "plugin_lateload", false);
+}
+
+void Prep_GameData()
+{
+	GameData cfg = new GameData("brs_gamedata");
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(cfg, SDKConf_Signature, "CEconItemSchema::GetItemDefinition");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	GetItemDefinition = EndPrepSDKCall();
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(cfg, SDKConf_Signature, "GEconItemSchema");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	Handle GEcon = EndPrepSDKCall();
+	GEconItemSchema = SDKCall(GEcon);
+	
+	m_pszItemIconClassname = view_as<Address>(cfg.GetOffset("CEconItemDefinition::m_pszItemIconClassname"));
+	
+	delete cfg;
 }
 
 public Action FF2_OnAbility2(int boss, const char[] Plugin_Name, const char[] Ability_Name, int status) {
@@ -116,12 +143,19 @@ public void Post_PlayerHurt(Event hEvent, const char[] sName, bool broadcast)
 	int weaponid = hEvent.GetInt("weaponid");
 	if(damageamount > 0)
 	{
-		static char weaponName[64], weapons[32];
+		static char Allow[32], weapons[64];
+		
+		if(!boss.GetArgS(this_plugin_name, this_ability_name, "allow", 3, Allow, sizeof(Allow)))
+			return;
 		
 		int wep = GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon");
 		min = GetEntProp(wep, Prop_Send, "m_iItemDefinitionIndex");
-		IntToString(min, weaponName, sizeof(weaponName));
-		if(!boss.GetArgS(this_plugin_name, this_ability_name, weaponName, 3, weapons, sizeof(weapons)))
+		IntToString(min, weapons, sizeof(weapons));
+		
+		if(StrContains(Allow, weapons) == -1)
+			return;
+		
+		if(!GetWeaponIconName(wep, weapons, sizeof(weapons)))
 			return;
 		
 		FireFakeDeathEvent(ui_victim, ui_attacker, weaponid, weapons, DMG_CRIT | DMG_PREVENT_PHYSICS_FORCE);
@@ -157,7 +191,48 @@ public void OnEntityCreated(int entity, const char[] cls)
 public void OnReviveMarkerCreated(int marker)
 {
 	RemoveEntity(marker);
-	SDKUnhook(entity, SDKHook_Spawn, OnReviveMarkerCreated);
+	SDKUnhook(marker, SDKHook_Spawn, OnReviveMarkerCreated);
+}
+
+bool GetWeaponIconName(int index, char[] name, int size)
+{
+	Address pItem = Econ_GetItem(index);
+	if(pItem==Address_Null)
+		return false;
+	
+	Address pData = Econ_GetData(pItem);
+	if(pData==Address_Null)
+		return false;
+	
+	LoadStringFromAddress(pData, name, size);
+	return true;
+}
+
+//By nosoop
+stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen, bool &bIsNullPointer = false) {
+	if (!addr) {
+		bIsNullPointer = true;
+		return 0;
+	}
+	
+	int c;
+	char ch;
+	do {
+		ch = LoadFromAddress(addr + view_as<Address>(c), NumberType_Int8);
+		buffer[c] = ch;
+	} while (ch && ++c < maxlen - 1);
+	return c;
+}
+
+stock Address Econ_GetItem(int weapon) {
+	int idx = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+	Address pItem = SDKCall(GetItemDefinition, GEconItemSchema, idx);
+	return pItem;
+}
+
+stock Address Econ_GetData(Address pItem) {
+	Address pData = view_as<Address>(LoadFromAddress(pItem + m_pszItemIconClassname, NumberType_Int32));
+	return pData;
 }
 
 stock void FF2_EmitVoiceToAll2(const char[] sound, int entity = SOUND_FROM_PLAYER)
