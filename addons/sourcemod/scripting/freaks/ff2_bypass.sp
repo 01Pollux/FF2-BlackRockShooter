@@ -56,7 +56,8 @@ public void Post_RoundStart(Event hevent, const char[] name, bool dontBroadcast)
 			continue;
 		
 		char Path[PLATFORM_MAX_PATH];
-		boss.GetArgS(this_plugin_name, this_ability_name, "directory", 1, Path, sizeof(Path));
+		if(!boss.GetArgS(this_plugin_name, this_ability_name, "directory", 1, Path, sizeof(Path)))
+			continue;
 		if(!IsActive) IsActive = true;
 		if(List==null) List = new ArrayStack(ByteCountToCells(PLATFORM_MAX_PATH));
 		Prep_PluginsUnload(Path);
@@ -77,6 +78,7 @@ void Prep_PluginsUnload(const char[] dir)
 		plugins.GetErrorString(Error, err, sizeof(err));
 		LogError("[FF2] SMCError : %s", err);
 	}
+	delete plugins;
 }
 
 public SMCResult SMC_OnNextKeyValue(SMCParser smc, const char[] key, const char[] value, bool key_quotes, bool value_quotes)
