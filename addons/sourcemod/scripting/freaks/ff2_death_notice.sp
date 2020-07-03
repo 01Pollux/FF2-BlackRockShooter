@@ -44,7 +44,7 @@ void Prep_GameData()
 	GetItemDefinition = EndPrepSDKCall();
 	
 	StartPrepSDKCall(SDKCall_Static);
-	PrepSDKCall_SetFromConf(cfg, SDKConf_Signature, "GEconItemSchema");
+	PrepSDKCall_SetFromConf(cfg, SDKConf_Signature, "CEconItemSchema");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
 	Handle GEcon = EndPrepSDKCall();
 	GEconItemSchema = SDKCall(GEcon);
@@ -207,6 +207,16 @@ bool GetWeaponIconName(int index, char[] name, int size)
 	return !!LoadStringFromAddress(pData, name, size);
 }
 
+stock Address Econ_GetItem(int index) {
+	Address pItem = SDKCall(GetItemDefinition, GEconItemSchema, index);
+	return pItem;
+}
+
+stock Address Econ_GetData(Address pItem) {
+	Address pData = view_as<Address>(LoadFromAddress(pItem + m_pszItemIconClassname, NumberType_Int32));
+	return pData;
+}
+
 //By nosoop
 stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen, bool &bIsNullPointer = false) {
 	if (!addr) {
@@ -221,16 +231,6 @@ stock int LoadStringFromAddress(Address addr, char[] buffer, int maxlen, bool &b
 		buffer[c] = ch;
 	} while (ch && ++c < maxlen - 1);
 	return c;
-}
-
-stock Address Econ_GetItem(int index) {
-	Address pItem = SDKCall(GetItemDefinition, GEconItemSchema, index);
-	return pItem;
-}
-
-stock Address Econ_GetData(Address pItem) {
-	Address pData = view_as<Address>(LoadFromAddress(pItem + m_pszItemIconClassname, NumberType_Int32));
-	return pData;
 }
 
 stock void FF2_EmitVoiceToAll2(const char[] sound, int entity = SOUND_FROM_PLAYER)
